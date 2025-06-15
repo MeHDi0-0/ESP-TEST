@@ -2,96 +2,103 @@ while true do
     wait(1)
     print("ni")
 
--- Player Highlighter with Tiny Nametags (Fixed Version)
+-- Advanced ESP with Body Outlines (Roblox Arsenal Compatible)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
--- Configuration
-local HIGHLIGHT_COLOR = Color3.fromRGB(0, 255, 255)
-local NAMETAG_COLOR = Color3.fromRGB(255, 255, 255)
-local NAMETAG_SIZE = 0.8
-local NAMETAG_OFFSET = Vector3.new(0, 2.2, 0)
+-- CONFIG --
+local ESP_SETTINGS = {
+    BoxColor = Color3.fromRGB(255, 0, 0),  -- Red box
+    BoxTransparency = 0.5,
+    BoxThickness = 1,
+    OutlineColor = Color3.fromRGB(255, 255, 255),  -- White outline
+    ShowName = true,
+    NameColor = Color3.fromRGB(255, 255, 255),
+    NameSize = 14,
+    TeamCheck = false  -- Set to true to only show enemies
+}
 
-local function safeCreateNametag(player)
-    local function applyToCharacter(character)
-        -- Wait for necessary parts
-        local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-        local head = character:FindFirstChild("Head")
-        
-        -- Only proceed if character has both parts
-        if not humanoidRootPart or not head then return end
+-- CORE FUNCTIONS --
+local function createESP(character, player)
+    -- Wait for character parts
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    local head = character:WaitForChild("Head")
 
-        -- Remove existing tags if they exist
-        if character:FindFirstChild("PlayerNametag") then
-            character.PlayerNametag:Destroy()
-        end
-        if character:FindFirstChild("PlayerHighlight") then
-            character.PlayerHighlight:Destroy()
-        end
+    -- Cleanup old ESP if exists
+    if character:FindFirstChild("ESPBox") then character.ESPBox:Destroy() end
+    if character:FindFirstChild("ESPOutline") then character.ESPOutline:Destroy() end
+    if character:FindFirstChild("ESPName") then character.ESPName:Destroy() end
 
-        -- Create BillboardGui
+    -- BOX (Adornment)
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "ESPBox"
+    box.Adornee = humanoidRootPart
+    box.AlwaysOnTop = true
+    box.ZIndex = 5
+    box.Size = Vector3.new(2, 3.5, 1)
+    box.Transparency = ESP_SETTINGS.BoxTransparency
+    box.Color3 = ESP_SETTINGS.BoxColor
+    box.Parent = character
+
+    -- OUTLINE (Thick box behind main box)
+    local outline = box:Clone()
+    outline.Name = "ESPOutline"
+    outline.Size = box.Size + Vector3.new(0.2, 0.2, 0.2)
+    outline.Transparency = 0.3
+    outline.Color3 = ESP_SETTINGS.OutlineColor
+    outline.ZIndex = 4
+    outline.Parent = character
+
+    -- NAME TAG
+    if ESP_SETTINGS.ShowName then
         local billboard = Instance.new("BillboardGui")
-        billboard.Name = "PlayerNametag"
+        billboard.Name = "ESPName"
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+        billboard.Adornee = head
         billboard.AlwaysOnTop = true
-        billboard.Size = UDim2.new(NAMETAG_SIZE, 0, NAMETAG_SIZE * 0.25, 0)
-        billboard.StudsOffset = NAMETAG_OFFSET
-        billboard.Adornee = humanoidRootPart
         billboard.Parent = character
 
-        -- Create text label
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Name = "NametagText"
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.TextColor3 = NAMETAG_COLOR
-        textLabel.Text = player.Name
-        textLabel.Font = Enum.Font.SourceSansBold
-        textLabel.TextSize = 14
-        textLabel.Parent = billboard
-
-        -- Create highlight
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "PlayerHighlight"
-        highlight.FillColor = HIGHLIGHT_COLOR
-        highlight.OutlineColor = HIGHLIGHT_COLOR
-        highlight.FillTransparency = 0.5
-        highlight.OutlineTransparency = 0
-        highlight.Parent = character
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Text = player.Name
+        nameLabel.Size = UDim2.new(1, 0, 1, 0)
+        nameLabel.TextColor3 = ESP_SETTINGS.NameColor
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.TextSize = ESP_SETTINGS.NameSize
+        nameLabel.Font = Enum.Font.SourceSansBold
+        nameLabel.Parent = billboard
     end
 
-    -- Handle initial character
-    if player.Character then
-        coroutine.wrap(applyToCharacter)(player.Character)
+    -- ARSENAL COMPATIBILITY: Update color based on team
+    if game.PlaceId == 286090429 then -- Arsenal PlaceID
+        RunService.Heartbeat:Connect(function()
+            if player.Team then
+                box.Color3 = player.TeamColor.Color
+                outline.Color3 = Color3.new(1,1,1) -- White outline
+            end
+        end)
     end
+end
 
-    -- Handle respawns
-    player.CharacterAdded:Connect(function(character)
-        -- Delay slightly to ensure character is fully loaded
-        task.wait(0.5)
-        coroutine.wrap(applyToCharacter)(character)
+-- PLAYER HANDLING --
+local function onPlayerAdded(player)
+    player.CharacterAdded:Connect(function(char)
+        if ESP_SETTINGS.TeamCheck and player.Team == Players.LocalPlayer.Team then
+            return -- Skip teammates if TeamCheck enabled
+        end
+        createESP(char, player)
     end)
-end
-
--- Initialize for all players
-for _, player in ipairs(Players:GetPlayers()) do
-    coroutine.wrap(safeCreateNametag)(player)
-end
-
--- Handle new players
-Players.PlayerAdded:Connect(function(player)
-    safeCreateNametag(player)
-end)
-
--- Clean up when players leave
-Players.PlayerRemoving:Connect(function(player)
+    
     if player.Character then
-        local char = player.Character
-        if char:FindFirstChild("PlayerNametag") then
-            char.PlayerNametag:Destroy()
-        end
-        if char:FindFirstChild("PlayerHighlight") then
-            char.PlayerHighlight:Destroy()
-        end
+        createESP(player.Character, player)
     end
-end)
+end
+
+-- INITIALIZE --
+Players.PlayerAdded:Connect(onPlayerAdded)
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= Players.LocalPlayer then
+        onPlayerAdded(player)
+    end
+end
     end
