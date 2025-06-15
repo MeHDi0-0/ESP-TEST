@@ -1,0 +1,97 @@
+while true do
+    wait(1)
+    print("ni")
+
+-- Player Highlighter with Tiny Nametags (Fixed Version)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+-- Configuration
+local HIGHLIGHT_COLOR = Color3.fromRGB(0, 255, 255)
+local NAMETAG_COLOR = Color3.fromRGB(255, 255, 255)
+local NAMETAG_SIZE = 0.8
+local NAMETAG_OFFSET = Vector3.new(0, 2.2, 0)
+
+local function safeCreateNametag(player)
+    local function applyToCharacter(character)
+        -- Wait for necessary parts
+        local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+        local head = character:FindFirstChild("Head")
+        
+        -- Only proceed if character has both parts
+        if not humanoidRootPart or not head then return end
+
+        -- Remove existing tags if they exist
+        if character:FindFirstChild("PlayerNametag") then
+            character.PlayerNametag:Destroy()
+        end
+        if character:FindFirstChild("PlayerHighlight") then
+            character.PlayerHighlight:Destroy()
+        end
+
+        -- Create BillboardGui
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "PlayerNametag"
+        billboard.AlwaysOnTop = true
+        billboard.Size = UDim2.new(NAMETAG_SIZE, 0, NAMETAG_SIZE * 0.25, 0)
+        billboard.StudsOffset = NAMETAG_OFFSET
+        billboard.Adornee = humanoidRootPart
+        billboard.Parent = character
+
+        -- Create text label
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Name = "NametagText"
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextColor3 = NAMETAG_COLOR
+        textLabel.Text = player.Name
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.TextSize = 14
+        textLabel.Parent = billboard
+
+        -- Create highlight
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "PlayerHighlight"
+        highlight.FillColor = HIGHLIGHT_COLOR
+        highlight.OutlineColor = HIGHLIGHT_COLOR
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.Parent = character
+    end
+
+    -- Handle initial character
+    if player.Character then
+        coroutine.wrap(applyToCharacter)(player.Character)
+    end
+
+    -- Handle respawns
+    player.CharacterAdded:Connect(function(character)
+        -- Delay slightly to ensure character is fully loaded
+        task.wait(0.5)
+        coroutine.wrap(applyToCharacter)(character)
+    end)
+end
+
+-- Initialize for all players
+for _, player in ipairs(Players:GetPlayers()) do
+    coroutine.wrap(safeCreateNametag)(player)
+end
+
+-- Handle new players
+Players.PlayerAdded:Connect(function(player)
+    safeCreateNametag(player)
+end)
+
+-- Clean up when players leave
+Players.PlayerRemoving:Connect(function(player)
+    if player.Character then
+        local char = player.Character
+        if char:FindFirstChild("PlayerNametag") then
+            char.PlayerNametag:Destroy()
+        end
+        if char:FindFirstChild("PlayerHighlight") then
+            char.PlayerHighlight:Destroy()
+        end
+    end
+end)
+    end
